@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>محرر سكربت وتشغيل 3D</title>
+<title>محرر سكربت وتشغيل 3D + بصمة</title>
 
 <!-- مكتبة Babylon.js -->
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -14,7 +14,29 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
 
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; direction: rtl; }
+  body { font-family: Arial, sans-serif; margin: 0; height: 100vh; direction: rtl; }
+  #fingerprintScreen, #mainApp { height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+  #mainApp { display: none; } /* مخفي أولًا */
+  button {
+    padding: 15px 25px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    width: 300px;
+  }
+  label {
+    font-weight: bold;
+  }
+  input[type="text"], input[type="number"] {
+    padding: 8px;
+    font-size: 16px;
+  }
+  /* تنسيق المحرر واللعبة */
   #editor { width: 40%; height: 100vh; border-left: 2px solid #333; }
   #gameContainer { width: 60%; height: 100vh; position: relative; display: flex; flex-direction: column; }
   #gameCanvas { flex-grow: 1; display: block; }
@@ -24,75 +46,125 @@
     padding: 10px;
     text-align: center;
   }
-  button {
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-  }
 </style>
 </head>
 <body>
 
-<!-- محرر الكود -->
-<div id="editor"></div>
+<!-- شاشة البصمة -->
+<div id="fingerprintScreen">
+  <button id="fingerprintBtn">بصمة الإصبع للأحوال المدنية</button>
+  <form id="userForm" style="display:none;">
+    <label for="username">اسم المستخدم:</label>
+    <input type="text" id="username" required />
 
-<!-- جانب اللعبة + الزر -->
-<div id="gameContainer">
-  <canvas id="gameCanvas"></canvas>
-  <div id="controls">
-    <button id="runBtn">تشغيل السكربت</button>
+    <label for="age">العمر:</label>
+    <input type="number" id="age" required min="1" max="120" />
+
+    <button type="submit">إرسال</button>
+  </form>
+</div>
+
+<!-- التطبيق الرئيسي: محرر + لعبة -->
+<div id="mainApp">
+  <!-- محرر الكود -->
+  <div id="editor"></div>
+
+  <!-- جانب اللعبة + زر -->
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+      <button id="runBtn">تشغيل السكربت</button>
+    </div>
   </div>
 </div>
 
 <script>
-  // تهيئة محرر CodeMirror
-  const editor = CodeMirror(document.getElementById("editor"), {
-    value: `// اكتب هنا كود JavaScript للتحكم بالمشهد\n// مثال: إضافة مكعب وتحريكه\n\nvar box = BABYLON.MeshBuilder.CreateBox("box", {}, scene);\nbox.position.y = 1;\n\nscene.registerBeforeRender(() => {\n  box.rotation.y += 0.01;\n});\n`,
-    mode:  "javascript",
-    lineNumbers: true,
-    theme: "default"
+  // عناصر الواجهة
+  const fingerprintScreen = document.getElementById('fingerprintScreen');
+  const fingerprintBtn = document.getElementById('fingerprintBtn');
+  const userForm = document.getElementById('userForm');
+  const mainApp = document.getElementById('mainApp');
+
+  fingerprintBtn.addEventListener('click', () => {
+    fingerprintBtn.style.display = 'none';
+    userForm.style.display = 'flex';
   });
 
-  // تهيئة مشهد Babylon.js
-  const canvas = document.getElementById("gameCanvas");
-  const engine = new BABYLON.Engine(canvas, true);
+  userForm.addEventListener('submit', (e) => {
+    e.preventDefault();
 
-  let scene = createScene();
+    // جلب البيانات
+    const username = document.getElementById('username').value.trim();
+    const age = document.getElementById('age').value.trim();
 
-  function createScene() {
-    const scene = new BABYLON.Scene(engine);
-    const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI / 2, Math.PI / 3, 10, BABYLON.Vector3.Zero(), scene);
-    camera.attachControl(canvas, true);
-
-    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
-
-    return scene;
-  }
-
-  engine.runRenderLoop(() => {
-    if(scene) scene.render();
-  });
-
-  window.addEventListener('resize', () => {
-    engine.resize();
-  });
-
-  // زر تشغيل السكربت
-  document.getElementById("runBtn").addEventListener("click", () => {
-    try {
-      // حذف كل المجسمات في المشهد ما عدا الكاميرا والضوء
-      scene.meshes.slice().forEach(mesh => mesh.dispose());
-
-      // جلب الكود من المحرر
-      const userCode = editor.getValue();
-
-      // إنشاء دالة جديدة لتنفيذ كود المستخدم مع تمرير scene
-      const func = new Function("scene", userCode);
-      func(scene);
-    } catch (e) {
-      alert("خطأ في الكود: " + e.message);
+    if(!username || !age) {
+      alert('يرجى تعبئة جميع الحقول');
+      return;
     }
+
+    // ممكن هنا تخزن البيانات أو ترسلها لخادم
+    console.log('اسم المستخدم:', username);
+    console.log('العمر:', age);
+
+    // إخفاء شاشة البصمة وإظهار التطبيق الرئيسي
+    fingerprintScreen.style.display = 'none';
+    mainApp.style.display = 'flex';
+
+    // بعدها نبدأ تهيئة اللعبة والمحرر
+    initApp();
   });
+
+  // الدالة تهيئة المحرر واللعبة
+  function initApp() {
+    // تهيئة محرر CodeMirror
+    const editor = CodeMirror(document.getElementById("editor"), {
+      value: `// اكتب هنا كود JavaScript للتحكم بالمشهد\n// مثال: إضافة مكعب وتحريكه\n\nvar box = BABYLON.MeshBuilder.CreateBox("box", {}, scene);\nbox.position.y = 1;\n\nscene.registerBeforeRender(() => {\n  box.rotation.y += 0.01;\n});\n`,
+      mode:  "javascript",
+      lineNumbers: true,
+      theme: "default"
+    });
+
+    // تهيئة مشهد Babylon.js
+    const canvas = document.getElementById("gameCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+
+    let scene = createScene();
+
+    function createScene() {
+      const scene = new BABYLON.Scene(engine);
+      const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI / 2, Math.PI / 3, 10, BABYLON.Vector3.Zero(), scene);
+      camera.attachControl(canvas, true);
+
+      const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+
+      return scene;
+    }
+
+    engine.runRenderLoop(() => {
+      if(scene) scene.render();
+    });
+
+    window.addEventListener('resize', () => {
+      engine.resize();
+    });
+
+    // زر تشغيل السكربت
+    document.getElementById("runBtn").addEventListener("click", () => {
+      try {
+        // حذف كل المجسمات في المشهد ما عدا الكاميرا والضوء
+        scene.meshes.slice().forEach(mesh => mesh.dispose());
+
+        // جلب الكود من المحرر
+        const userCode = editor.getValue();
+
+        // تنفيذ كود المستخدم مع تمرير scene
+        const func = new Function("scene", userCode);
+        func(scene);
+      } catch (e) {
+        alert("خطأ في الكود: " + e.message);
+      }
+    });
+  }
 </script>
 
 </body>
