@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>محرر سكربت وتشغيل 3D</title>
+
+<!-- مكتبة Babylon.js -->
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+<!-- مكتبة CodeMirror لتحرير الكود -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; direction: rtl; }
+  #editor { width: 40%; height: 100vh; border-left: 2px solid #333; }
+  #gameCanvas { width: 60%; height: 100vh; display: block; }
+  #controls { padding: 10px; background: #222; color: #fff; }
+  button { padding: 8px 16px; font-size: 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- محرر الكود -->
+<div id="editor"></div>
+
+<!-- جانب اللعبة -->
+<div style="width: 60%; height: 100vh; position: relative;">
+  <canvas id="gameCanvas"></canvas>
+  <div id="controls">
+    <button id="runBtn">تشغيل السكربت</button>
+  </div>
+</div>
+
+<script>
+  // تهيئة محرر CodeMirror
+  const editor = CodeMirror(document.getElementById("editor"), {
+    value: `// اكتب هنا كود JavaScript للتحكم بالمشهد\n// مثال: إضافة مكعب وتحريكه\n\nvar box = BABYLON.MeshBuilder.CreateBox("box", {}, scene);\nbox.position.y = 1;\n\nscene.registerBeforeRender(() => {\n  box.rotation.y += 0.01;\n});\n`,
+    mode:  "javascript",
+    lineNumbers: true,
+    theme: "default"
+  });
+
+  // تهيئة مشهد Babylon.js
+  const canvas = document.getElementById("gameCanvas");
+  const engine = new BABYLON.Engine(canvas, true);
+
+  let scene = createScene();
+
+  function createScene() {
+    const scene = new BABYLON.Scene(engine);
+    const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI / 2, Math.PI / 3, 10, BABYLON.Vector3.Zero(), scene);
+    camera.attachControl(canvas, true);
+
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+
+    return scene;
+  }
+
+  engine.runRenderLoop(() => {
+    scene.render();
+  });
+
+  window.addEventListener('resize', () => {
+    engine.resize();
+  });
+
+  // زر تشغيل السكربت
+  document.getElementById("runBtn").addEventListener("click", () => {
+    try {
+      // مسح المشهد القديم (ما عدا الكاميرا والضوء)
+      scene.meshes.slice().forEach(mesh => mesh.dispose());
+
+      // جلب الكود من المحرر
+      const userCode = editor.getValue();
+
+      // تنفيذ الكود داخل دالة مع إرسال المشهد كمتغير عالمي
+      const func = new Function("scene", userCode);
+      func(scene);
+    } catch (e) {
+      alert("خطأ في الكود: " + e.message);
+    }
+  });
+</script>
+
+</body>
+</html>
